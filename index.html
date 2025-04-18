@@ -1,0 +1,244 @@
+<!DOCTYPE html><html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Patrol Web App</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    :root {
+      --primary: #007bff;
+      --light: #f8f9fa;
+      --dark: #343a40;
+      --success: #28a745;
+      --danger: #dc3545;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--light);
+      color: var(--dark);
+    }
+    header {
+      background-color: var(--primary);
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .container {
+      max-width: 600px;
+      margin: 2rem auto;
+      background: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.05);
+    }
+    h2, h3 {
+      margin-bottom: 1rem;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+    button {
+      background-color: var(--primary);
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+      word-wrap: break-word;
+    }
+    th {
+      background-color: var(--primary);
+      color: white;
+    }
+    .logout {
+      float: right;
+      background-color: var(--danger);
+      width: auto;
+      padding: 8px 16px;
+    }
+    #reader {
+      width: 100%;
+      margin-top: 1rem;
+      display: none;
+    }
+    @media (max-width: 480px) {
+      .container {
+        margin: 1rem;
+        padding: 1rem;
+      }
+      th, td {
+        font-size: 12px;
+        padding: 6px;
+      }
+      input, select, button {
+        font-size: 14px;
+        padding: 10px;
+      }
+      .logout {
+        float: none;
+        display: block;
+        width: 100%;
+        margin-top: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>QR Patrol Web App</h2>
+  </header>
+  <div class="container">
+    <div id="loginForm">
+      <h3>Login Petugas</h3>
+      <label for="userId">ID Pengguna:</label>
+      <input type="text" id="userId" placeholder="Masukkan ID">
+      <label for="userPassword">Password:</label>
+      <input type="password" id="userPassword" placeholder="Masukkan Password">
+      <button onclick="loginUser()">Login</button>
+    </div><div id="appContent" style="display:none">
+  <p><strong>Login sebagai:</strong> <span id="currentUser"></span> <button class="logout" onclick="logoutUser()">Logout</button></p>
+  <div id="reader"></div>
+  <button onclick="startScanner()">Mulai Scan</button>
+  <button onclick="downloadCSV()">Download CSV</button>
+
+  <table id="logTable">
+    <thead>
+      <tr>
+        <th>QR Code</th>
+        <th>Waktu</th>
+        <th>Lokasi</th>
+        <th>Petugas</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+  </div>  <script>
+    const users = [
+      { id: "petugas1", password: "1234" },
+      { id: "petugas2", password: "1234" },
+      { id: "petugas3", password: "1234" },
+      { id: "petugas4", password: "1234" },
+      { id: "petugas5", password: "1234" },
+      { id: "petugas6", password: "1234" },
+    ];
+
+    let currentUser = localStorage.getItem("currentUser") || null;
+    const logs = JSON.parse(localStorage.getItem("qrLogs")) || [];
+    const tableBody = document.querySelector("#logTable tbody");
+
+    function renderTable() {
+      tableBody.innerHTML = "";
+      logs.filter(log => log.user === currentUser).forEach(log => {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${log.code}</td><td>${log.time}</td><td>${log.location}</td><td>${log.user}</td>`;
+        tableBody.appendChild(row);
+      });
+    }
+
+    function saveLog(code, location) {
+      const log = {
+        code,
+        time: new Date().toLocaleString(),
+        location: location || "-",
+        user: currentUser
+      };
+      logs.push(log);
+      localStorage.setItem("qrLogs", JSON.stringify(logs));
+      renderTable();
+    }
+
+    function getLocation(callback) {
+      if (!navigator.geolocation) return callback("Tidak tersedia");
+      navigator.geolocation.getCurrentPosition(pos => {
+        const loc = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+        callback(loc);
+      }, () => callback("Gagal ambil lokasi"));
+    }
+
+    function startScanner() {
+      const html5QrCode = new Html5Qrcode("reader");
+      document.getElementById("reader").style.display = "block";
+      Html5Qrcode.getCameras().then(cameras => {
+        if (cameras && cameras.length) {
+          html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: 250 },
+            (decodedText) => {
+              html5QrCode.stop();
+              document.getElementById("reader").style.display = "none";
+              getLocation(loc => saveLog(decodedText, loc));
+            },
+            (errorMessage) => {
+              console.warn(`QR error: ${errorMessage}`);
+            }
+          );
+        }
+      });
+    }
+
+    function downloadCSV() {
+      const csv = ["QR Code,Waktu,Lokasi,Petugas", ...logs.map(l => `${l.code},${l.time},${l.location},${l.user}`)].join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "qr_patrol_log.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function loginUser() {
+      const inputId = document.getElementById("userId").value.trim();
+      const inputPassword = document.getElementById("userPassword").value.trim();
+
+      const matchedUser = users.find(u => u.id === inputId && u.password === inputPassword);
+      if (!matchedUser) {
+        alert("ID atau password salah!");
+        return;
+      }
+      currentUser = matchedUser.id;
+      localStorage.setItem("currentUser", currentUser);
+      document.getElementById("loginForm").style.display = "none";
+      document.getElementById("appContent").style.display = "block";
+      document.getElementById("currentUser").textContent = currentUser;
+      renderTable();
+    }
+
+    function logoutUser() {
+      localStorage.removeItem("currentUser");
+      location.reload();
+    }
+
+    if (currentUser) {
+      document.getElementById("loginForm").style.display = "none";
+      document.getElementById("appContent").style.display = "block";
+      document.getElementById("currentUser").textContent = currentUser;
+      renderTable();
+    }
+  </script></body>
+</html>
