@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="id">
+<!DOCTYPE html>
+<html lang="id">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -88,9 +89,15 @@
       width: auto;
       padding: 8px 16px;
     }
-    #reader {
-      width: 100%;
-      margin-top: 1rem;
+    .flash-toggle {
+      margin: 10px 0;
+      padding: 8px 12px;
+      background-color: #ffc107;
+      color: #212529;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      cursor: pointer;
       display: none;
     }
     footer {
@@ -135,29 +142,34 @@
       <label for="userPassword">Password:</label>
       <input type="password" id="userPassword" placeholder="Masukkan Password">
       <button onclick="loginUser()">Login</button>
-    </div><div id="appContent" style="display:none">
-  <p><strong>Login sebagai:</strong> <span id="currentUser"></span> <button class="logout" onclick="logoutUser()">Logout</button></p>
-  <div id="reader"></div>
-  <button onclick="startScanner()">Mulai Scan</button>
-  <button onclick="downloadCSV()">Download CSV</button>
+    </div>
 
-  <table id="logTable">
-    <thead>
-      <tr>
-        <th>QR Code</th>
-        <th>Waktu</th>
-        <th>Lokasi</th>
-        <th>Petugas</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
+    <div id="appContent" style="display:none">
+      <p><strong>Login sebagai:</strong> <span id="currentUser"></span> <button class="logout" onclick="logoutUser()">Logout</button></p>
+      <div id="reader"></div>
+      <button onclick="startScanner()">Mulai Scan</button>
+      <button id="flashButton" class="flash-toggle" onclick="toggleFlash()">Nyalakan Flash</button>
 
+      <button onclick="downloadCSV()">Download CSV</button>
+
+      <table id="logTable">
+        <thead>
+          <tr>
+            <th>QR Code</th>
+            <th>Waktu</th>
+            <th>Lokasi</th>
+            <th>Petugas</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
   <footer>
     Created by Rifaldi .W.R | CP +6288802053134
-  </footer>  <script>
+  </footer>
+
+  <script>
     const users = [
       { id: "petugas1", password: "1234" },
       { id: "petugas2", password: "1234" },
@@ -170,6 +182,9 @@
     let currentUser = localStorage.getItem("currentUser") || null;
     const logs = JSON.parse(localStorage.getItem("qrLogs")) || [];
     const tableBody = document.querySelector("#logTable tbody");
+
+    let html5QrCode;
+    let isFlashOn = false;
 
     function renderTable() {
       tableBody.innerHTML = "";
@@ -201,24 +216,44 @@
     }
 
     function startScanner() {
-      const html5QrCode = new Html5Qrcode("reader");
+      if (html5QrCode) {
+        html5QrCode.clear();
+      }
+      html5QrCode = new Html5Qrcode("reader");
       document.getElementById("reader").style.display = "block";
+      document.getElementById("flashButton").style.display = "inline-block";
       Html5Qrcode.getCameras().then(cameras => {
         if (cameras && cameras.length) {
           html5QrCode.start(
             { facingMode: "environment" },
-            { fps: 10, qrbox: 250 },
+            {
+              fps: 10,
+              qrbox: 250,
+              experimentalFeatures: {
+                useBarCodeDetectorIfSupported: true
+              }
+            },
             (decodedText) => {
               html5QrCode.stop();
               document.getElementById("reader").style.display = "none";
+              document.getElementById("flashButton").style.display = "none";
               getLocation(loc => saveLog(decodedText, loc));
             },
             (errorMessage) => {
               console.warn(`QR error: ${errorMessage}`);
             }
-          );
+          ).then(() => {
+            html5QrCode.applyVideoConstraints({ advanced: [{ torch: isFlashOn }] });
+          });
         }
       });
+    }
+
+    function toggleFlash() {
+      isFlashOn = !isFlashOn;
+      if (html5QrCode) {
+        html5QrCode.applyVideoConstraints({ advanced: [{ torch: isFlashOn }] });
+      }
     }
 
     function downloadCSV() {
@@ -260,5 +295,6 @@
       document.getElementById("currentUser").textContent = currentUser;
       renderTable();
     }
-  </script></body>
+  </script>
+</body>
 </html>
