@@ -2,7 +2,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QR Patrol Web App</title>
+  <title>I201 Security</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     :root {
@@ -21,6 +21,9 @@
       padding: 0;
       background-color: var(--light);
       color: var(--dark);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
     }
     header {
       background-color: var(--primary);
@@ -90,6 +93,13 @@
       margin-top: 1rem;
       display: none;
     }
+    footer {
+      margin-top: auto;
+      text-align: center;
+      font-size: 12px;
+      padding: 1rem;
+      color: #777;
+    }
     @media (max-width: 480px) {
       .container {
         margin: 1rem;
@@ -144,11 +154,10 @@
   </table>
 </div>
 
-  </div>  
+  </div>
   <footer>
     Created by Rifaldi .W.R | CP +6288802053134
-  </footer>
-  <script>
+  </footer>  <script>
     const users = [
       { id: "petugas1", password: "1234" },
       { id: "petugas2", password: "1234" },
