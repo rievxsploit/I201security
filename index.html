@@ -1,10 +1,10 @@
-<!DOCTYPE html>
-<html lang="id">
+<!DOCTYPE html><html lang="id">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>I201 Security</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
   <style>
     :root {
       --primary: #007bff;
@@ -142,35 +142,31 @@
       <label for="userPassword">Password:</label>
       <input type="password" id="userPassword" placeholder="Masukkan Password">
       <button onclick="loginUser()">Login</button>
-    </div>
+    </div><div id="appContent" style="display:none">
+  <p><strong>Login sebagai:</strong> <span id="currentUser"></span> <button class="logout" onclick="logoutUser()">Logout</button></p>
+  <div id="reader"></div>
+  <button onclick="startScanner()">Mulai Scan</button>
+  <button id="flashButton" class="flash-toggle" onclick="toggleFlash()">Toggle Flash</button>
+  <button onclick="downloadCSV()">Download CSV</button>
+  <table id="logTable">
+    <thead>
+      <tr>
+        <th>QR Code</th>
+        <th>Waktu</th>
+        <th>Lokasi</th>
+        <th>Petugas</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
 
-    <div id="appContent" style="display:none">
-      <p><strong>Login sebagai:</strong> <span id="currentUser"></span> <button class="logout" onclick="logoutUser()">Logout</button></p>
-      <div id="reader"></div>
-      <button onclick="startScanner()">Mulai Scan</button>
-      <button id="flashButton" class="flash-toggle" onclick="toggleFlash()">Nyalakan Flash</button>
-
-      <button onclick="downloadCSV()">Download CSV</button>
-
-      <table id="logTable">
-        <thead>
-          <tr>
-            <th>QR Code</th>
-            <th>Waktu</th>
-            <th>Lokasi</th>
-            <th>Petugas</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
   </div>
   <footer>
     Created by Rifaldi .W.R | CP +6288802053134
-  </footer>
-
-  <script>
-    const users = [
+  </footer>  <script>
+    const secretKey = "admini201";
+    const rawUsers = [
       { id: "petugas1", password: "1234" },
       { id: "petugas2", password: "1234" },
       { id: "petugas3", password: "1234" },
@@ -179,12 +175,20 @@
       { id: "petugas6", password: "1234" },
     ];
 
+    const users = rawUsers.map(user => ({
+      id: CryptoJS.AES.encrypt(user.id, secretKey).toString(),
+      password: CryptoJS.AES.encrypt(user.password, secretKey).toString(),
+    }));
+
     let currentUser = localStorage.getItem("currentUser") || null;
     const logs = JSON.parse(localStorage.getItem("qrLogs")) || [];
     const tableBody = document.querySelector("#logTable tbody");
-
     let html5QrCode;
     let isFlashOn = false;
+
+    function decrypt(text) {
+      return CryptoJS.AES.decrypt(text, secretKey).toString(CryptoJS.enc.Utf8);
+    }
 
     function renderTable() {
       tableBody.innerHTML = "";
@@ -271,12 +275,13 @@
       const inputId = document.getElementById("userId").value.trim();
       const inputPassword = document.getElementById("userPassword").value.trim();
 
-      const matchedUser = users.find(u => u.id === inputId && u.password === inputPassword);
+      const matchedUser = users.find(u => decrypt(u.id) === inputId && decrypt(u.password) === inputPassword);
+
       if (!matchedUser) {
         alert("ID atau password salah!");
         return;
       }
-      currentUser = matchedUser.id;
+      currentUser = inputId;
       localStorage.setItem("currentUser", currentUser);
       document.getElementById("loginForm").style.display = "none";
       document.getElementById("appContent").style.display = "block";
@@ -295,6 +300,5 @@
       document.getElementById("currentUser").textContent = currentUser;
       renderTable();
     }
-  </script>
-</body>
+  </script></body>
 </html>
